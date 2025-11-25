@@ -199,6 +199,26 @@ type GenericModel2[K any, V any] struct {
 	Value V `json:"value"`
 }
 
+type isAorB interface {
+	Example()
+}
+
+type ExampleA struct {
+	A string `json:"a"`
+}
+
+func (ExampleA) Example() {}
+
+type ExampleB struct {
+	B int `json:"b"`
+}
+
+func (ExampleB) Example() {}
+
+type InterfaceModel struct {
+	Field isAorB `json:"field"`
+}
+
 func TestSchema(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -479,6 +499,20 @@ func TestSchema(t *testing.T) {
 				return nil
 			},
 		},
+		{
+			name: "interface-model.yaml",
+			setup: func(api *API) error {
+				if _, _, err := api.RegisterModel(ModelOf[ExampleA]()); err != nil {
+					return err
+				}
+				if _, _, err := api.RegisterModel(ModelOf[ExampleB]()); err != nil {
+					return err
+				}
+				api.Get("/test").
+					HasResponseModel(http.StatusOK, ModelOf[InterfaceModel]())
+				return nil
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -512,11 +546,16 @@ func TestSchema(t *testing.T) {
 				api := NewAPI(test.name, test.opts...)
 				api.StripPkgPaths = []string{"github.com/a-h/rest"}
 				// Configure it.
-				test.setup(api)
+				err := test.setup(api)
+				if err != nil {
+					errs[1] = fmt.Errorf("could not setup API: %v", err)
+					return
+				}
 				// Create the actual spec.
 				spec, err := api.Spec()
 				if err != nil {
-					t.Errorf("failed to generate spec: %v", err)
+					errs[1] = fmt.Errorf("failed to generate spec: %v", err)
+					return
 				}
 				actual, errs[1] = specToYAML(spec)
 			}()

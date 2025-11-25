@@ -1,0 +1,41 @@
+openapi: 3.0.0
+components:
+  schemas:
+    ExampleA:
+      properties:
+        a:
+          type: string
+      required:
+        - a
+      type: object
+    ExampleB:
+      properties:
+        b:
+          type: integer
+      required:
+        - b
+      type: object
+    InterfaceModel:
+      properties:
+        field:
+          anyOf:
+            - $ref: '#/components/schemas/ExampleA'
+            - $ref: '#/components/schemas/ExampleB'
+      required:
+        - field
+      type: object
+info:
+  title: interface-model.yaml
+  version: 0.0.0
+paths:
+  /test:
+    get:
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterfaceModel'
+          description: ""
+        default:
+          description: ""

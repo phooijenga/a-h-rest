@@ -3,6 +3,8 @@ package rest
 import (
 	"errors"
 	"fmt"
+	"iter"
+	"maps"
 	"reflect"
 	"regexp"
 	"slices"
@@ -376,6 +378,11 @@ func (api *API) RegisterModel(model Model, opts ...ModelOpts) (name string, sche
 				schema.Required = append(schema.Required, fieldName)
 			}
 		}
+	case reflect.Interface:
+		schema, err = api.getImplementingModels(t)
+		if err != nil {
+			return name, schema, err
+		}
 	}
 
 	if schema == nil {
@@ -398,7 +405,6 @@ func (api *API) RegisterModel(model Model, opts ...ModelOpts) (name string, sche
 	// After all processing, register the type if required.
 	if shouldBeReferenced(schema) {
 		api.models[name] = schema
-		return
 	}
 
 	return
@@ -462,4 +468,36 @@ func (api *API) normalizeTypeName(pkgPath, name string) string {
 	}
 
 	return strings.Trim(invalidIdentifier.ReplaceAllString(name, "_"), "_")
+}
+
+// getImplementingModels creates an anyOf schema for all registered implementations of the interface.
+// An interface can be any of its implementations. Since there is no way to get a list of all
+// implementations from the type itself, we rely on users to register implementations.
+func (api *API) getImplementingModels(iface reflect.Type) (*openapi3.Schema, error) {
+	refs := make([]*openapi3.SchemaRef, 0)
+
+	inner := func(types iter.Seq[reflect.Type]) error {
+		for t := range types {
+			if t.Implements(iface) {
+				implName, implSchema, err := api.RegisterModel(modelFromType(t))
+				if err != nil {
+					return fmt.Errorf("error getting schema of interface implementation %v: %w", t, err)
+				}
+				refs = append(refs, getSchemaReferenceOrValue(implName, implSchema))
+			}
+		}
+		return nil
+	}
+
+	if err := inner(maps.Keys(api.KnownTypes)); err != nil {
+		return nil, err
+	}
+	if err := inner(maps.Keys(api.visitedModels)); err != nil {
+		return nil, err
+	}
+	if len(refs) == 0 {
+		return nil, errors.New("no implementations found for type")
+	}
+
+	return &openapi3.Schema{AnyOf: refs}, nil
 }
