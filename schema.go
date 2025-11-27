@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -448,21 +449,17 @@ func shouldBeReferenced(schema *openapi3.Schema) bool {
 	return false
 }
 
-var normalizer = strings.NewReplacer("/", "_",
-	".", "_",
-	"[", "_",
-	"]", "_")
+var invalidIdentifier = regexp.MustCompile("[^a-zA-Z0-9_]+")
 
 func (api *API) normalizeTypeName(pkgPath, name string) string {
-	var omitPackage bool
+	if pkgPath != "" {
+		name = pkgPath + "." + name
+	}
+
 	for _, pkg := range api.StripPkgPaths {
-		if strings.HasPrefix(pkgPath, pkg) {
-			omitPackage = true
-			break
-		}
+		name = strings.ReplaceAll(name, pkg+".", "")
+		name = strings.ReplaceAll(name, pkg+"/", "")
 	}
-	if omitPackage || pkgPath == "" {
-		return normalizer.Replace(name)
-	}
-	return normalizer.Replace(pkgPath + "/" + name)
+
+	return strings.Trim(invalidIdentifier.ReplaceAllString(name, "_"), "_")
 }

@@ -189,6 +189,16 @@ type RecursiveModel struct {
 	Foo       string               `json:"foo,omitempty"`
 }
 
+type GenericModel[T any] struct {
+	Count int `json:"count"`
+	Items []T `json:"items"`
+}
+
+type GenericModel2[K any, V any] struct {
+	Key   K `json:"key"`
+	Value V `json:"value"`
+}
+
 func TestSchema(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -456,6 +466,16 @@ func TestSchema(t *testing.T) {
 			setup: func(api *API) error {
 				api.Get("/").
 					HasResponseModel(http.StatusOK, ModelOf[StructWithTags]())
+				return nil
+			},
+		},
+		{
+			name: "generic-models.yaml",
+			setup: func(api *API) error {
+				api.Get("/users").
+					HasResponseModel(http.StatusOK, ModelOf[GenericModel[User]]())
+				api.Get("/values").
+					HasResponseModel(http.StatusOK, ModelOf[GenericModel[GenericModel2[string, User]]]())
 				return nil
 			},
 		},

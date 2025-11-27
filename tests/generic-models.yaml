@@ -1,0 +1,81 @@
+openapi: 3.0.0
+components:
+  schemas:
+    # originally GenericModel[GenericModel2[string, User]]
+    GenericModel_GenericModel2_string_User:
+      type: object
+      properties:
+        count:
+          type: integer
+        items:
+          items:
+            $ref: '#/components/schemas/GenericModel2_string_User'
+          type: array
+          nullable: true
+      required:
+        - count
+        - items
+
+    # originally GenericModel[User]
+    GenericModel_User:
+      type: object
+      properties:
+        count:
+          type: integer
+        items:
+          items:
+            $ref: '#/components/schemas/User'
+          type: array
+          nullable: true
+      required:
+        - count
+        - items
+
+    # originally GenericModel2[string, User]
+    GenericModel2_string_User:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          $ref: '#/components/schemas/User'
+      required:
+        - key
+        - value
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required:
+        - id
+        - name
+info:
+  title: generic-models.yaml
+  version: 0.0.0
+paths:
+  /users:
+    get:
+      responses:
+        "200":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericModel_User'
+        default:
+          description: ""
+  /values:
+    get:
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericModel_GenericModel2_string_User'
+          description: ""
+        default:
+          description: ""
